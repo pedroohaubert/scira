@@ -4,14 +4,9 @@ import 'katex/dist/katex.min.css';
 
 import { BorderTrail } from '@/components/core/border-trail';
 import { TextShimmer } from '@/components/core/text-shimmer';
-import { FlightTracker } from '@/components/flight-tracker';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import InteractiveChart from '@/components/interactive-charts';
-import { MapComponent, MapContainer } from '@/components/map-components';
-import TMDBResult from '@/components/movie-info';
 import MultiSearch from '@/components/multi-search';
-import NearbySearchMapView from '@/components/nearby-search-map-view';
-import TrendingResults from '@/components/trending-tv-movies-results';
 import {
     Accordion,
     AccordionContent,
@@ -32,7 +27,6 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
-import WeatherChart from '@/components/weather-chart';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { cn, SearchGroupId } from '@/lib/utils';
 import { Wave } from "@foobar404/wave";
@@ -109,12 +103,9 @@ import { Tweet } from 'react-tweet';
 import { toast } from 'sonner';
 import {
     fetchMetadata,
-    generateSpeech,
     suggestQuestions
 } from './actions';
 import { TrendingQuery } from './api/trending/route';
-import InteractiveStockChart from '@/components/interactive-stock-chart';
-import { CurrencyConverter } from '@/components/currency_conv';
 import { ReasoningUIPart, ToolInvocationUIPart, TextUIPart, SourceUIPart } from '@ai-sdk/ui-utils';
 import {
     Dialog,
@@ -1206,7 +1197,7 @@ const HomeContent = () => {
         } else {
             toast.error("Please enter a valid message.");
         }
-    }, [input, messages, editingMessageIndex, setMessages, reload]);
+    }, [input, messages, editingMessageIndex, setMessages, setInput, reload]);
 
     const AboutButton = () => {
         return (
@@ -1478,7 +1469,7 @@ const HomeContent = () => {
 
         // Resubmit the last user message
         await reload();
-    }, [messages, append, setMessages, status]);
+    }, [status, messages, setMessages, reload]);
 
     // Add this type at the top with other interfaces
     type MessagePart = TextUIPart | ReasoningUIPart | ToolInvocationUIPart | SourceUIPart;
@@ -1847,280 +1838,7 @@ const ToolInvocationListView = memo(
                 const args = JSON.parse(JSON.stringify(toolInvocation.args));
                 const result = 'result' in toolInvocation ? JSON.parse(JSON.stringify(toolInvocation.result)) : null;
 
-                if (toolInvocation.toolName === 'find_place') {
-                    if (!result) {
-                        return <SearchLoadingState
-                            icon={MapPin}
-                            text="Finding locations..."
-                            color="blue"
-                        />;
-                    }
 
-                    const { features } = result;
-                    if (!features || features.length === 0) return null;
-
-                    return (
-                        <Card className="w-full my-4 overflow-hidden bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800">
-                            <div className="relative w-full h-[60vh]">
-                                <div className="absolute top-4 left-4 z-10 flex gap-2">
-                                    <Badge
-                                        variant="secondary"
-                                        className="bg-white/90 dark:bg-black/90 backdrop-blur-sm"
-                                    >
-                                        {features.length} Locations Found
-                                    </Badge>
-                                </div>
-
-                                <MapComponent
-                                    center={{
-                                        lat: features[0].geometry.coordinates[1],
-                                        lng: features[0].geometry.coordinates[0],
-                                    }}
-                                    places={features.map((feature: any) => ({
-                                        name: feature.name,
-                                        location: {
-                                            lat: feature.geometry.coordinates[1],
-                                            lng: feature.geometry.coordinates[0],
-                                        },
-                                        vicinity: feature.formatted_address,
-                                    }))}
-                                    zoom={features.length > 1 ? 12 : 15}
-                                />
-                            </div>
-
-                            <div className="max-h-[300px] overflow-y-auto border-t border-neutral-200 dark:border-neutral-800">
-                                {features.map((place: any, index: any) => {
-                                    const isGoogleResult = place.source === 'google';
-
-                                    return (
-                                        <div
-                                            key={place.id || index}
-                                            className={cn(
-                                                "p-4",
-                                                index !== features.length - 1 && "border-b border-neutral-200 dark:border-neutral-800"
-                                            )}
-                                        >
-                                            <div className="flex items-center gap-4">
-                                                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/20 flex items-center justify-center">
-                                                    {place.feature_type === 'street_address' || place.feature_type === 'street' ? (
-                                                        <RoadHorizon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                                                    ) : place.feature_type === 'locality' ? (
-                                                        <Building className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                                                    ) : (
-                                                        <MapPin className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                                                    )}
-                                                </div>
-
-                                                <div className="flex-1 min-w-0">
-                                                    <h3 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100 truncate">
-                                                        {place.name}
-                                                    </h3>
-                                                    {place.formatted_address && (
-                                                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-                                                            {place.formatted_address}
-                                                        </p>
-                                                    )}
-                                                    <Badge variant="secondary" className="mt-2">
-                                                        {place.feature_type.replace(/_/g, ' ')}
-                                                    </Badge>
-                                                </div>
-
-                                                <div className="flex gap-2">
-                                                    <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Button
-                                                                    size="icon"
-                                                                    variant="outline"
-                                                                    onClick={() => {
-                                                                        const coords = `${place.geometry.coordinates[1]},${place.geometry.coordinates[0]}`;
-                                                                        navigator.clipboard.writeText(coords);
-                                                                        toast.success("Coordinates copied!");
-                                                                    }}
-                                                                    className="h-10 w-10"
-                                                                >
-                                                                    <Copy className="h-4 w-4" />
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>Copy Coordinates</TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
-
-                                                    <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Button
-                                                                    size="icon"
-                                                                    variant="outline"
-                                                                    onClick={() => {
-                                                                        const url = isGoogleResult
-                                                                            ? `https://www.google.com/maps/place/?q=place_id:${place.place_id}`
-                                                                            : `https://www.google.com/maps/search/?api=1&query=${place.geometry.coordinates[1]},${place.geometry.coordinates[0]}`;
-                                                                        window.open(url, '_blank');
-                                                                    }}
-                                                                    className="h-10 w-10"
-                                                                >
-                                                                    <ExternalLink className="h-4 w-4" />
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>View in Maps</TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </Card>
-                    );
-                }
-
-                if (toolInvocation.toolName === 'movie_or_tv_search') {
-                    if (!result) {
-                        return <SearchLoadingState
-                            icon={Film}
-                            text="Discovering entertainment content..."
-                            color="violet"
-                        />;
-                    }
-
-                    return <TMDBResult result={result} />;
-                }
-
-                if (toolInvocation.toolName === 'trending_movies') {
-                    if (!result) {
-                        return <SearchLoadingState
-                            icon={Film}
-                            text="Loading trending movies..."
-                            color="blue"
-                        />;
-                    }
-                    return <TrendingResults result={result} type="movie" />;
-                }
-
-                if (toolInvocation.toolName === 'trending_tv') {
-                    if (!result) {
-                        return <SearchLoadingState
-                            icon={Tv}
-                            text="Loading trending TV shows..."
-                            color="blue"
-                        />;
-                    }
-                    return <TrendingResults result={result} type="tv" />;
-                }
-
-
-                if (toolInvocation.toolName === 'x_search') {
-                    if (!result) {
-                        return <SearchLoadingState
-                            icon={XLogo}
-                            text="Searching for latest news..."
-                            color="gray"
-                        />;
-                    }
-
-                    const PREVIEW_COUNT = 3;
-
-                    const FullTweetList = memo(() => (
-                        <div className="grid gap-4 p-4 sm:max-w-[500px]">
-                            {result.map((post: XResult, index: number) => (
-                                <motion.div
-                                    key={post.id}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ duration: 0.3, delay: index * 0.1 }}
-                                    className='[&>div]:m-0'
-                                >
-                                    <Tweet id={post.tweetId} />
-                                </motion.div>
-                            ))}
-                        </div>
-                    ));
-
-                    FullTweetList.displayName = 'FullTweetList';
-
-                    return (
-                        <Card className="w-full my-4 overflow-hidden shadow-none">
-                            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <div className="h-8 w-8 rounded-full bg-neutral-100 dark:bg-neutral-900 flex items-center justify-center">
-                                        <XLogo className="h-4 w-4" />
-                                    </div>
-                                    <div>
-                                        <CardTitle>Latest from X</CardTitle>
-                                        <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                                            {result.length} tweets found
-                                        </p>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <div className="relative">
-                                <div className="px-4 pb-2 h-72">
-                                    <div className="flex flex-nowrap overflow-x-auto gap-4 no-scrollbar">
-                                        {result.slice(0, PREVIEW_COUNT).map((post: XResult, index: number) => (
-                                            <motion.div
-                                                key={post.tweetId}
-                                                className="w-[min(100vw-2rem,320px)] flex-none"
-                                                initial={{ opacity: 0, y: 20 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                transition={{ duration: 0.3, delay: index * 0.1 }}
-                                            >
-                                                <Tweet id={post.tweetId} />
-                                            </motion.div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white dark:to-black pointer-events-none" />
-
-                                <div className="absolute bottom-0 inset-x-0 flex items-center justify-center pb-4 pt-20 bg-gradient-to-t from-white dark:from-black to-transparent">
-                                    <div className="hidden sm:block">
-                                        <Sheet>
-                                            <SheetTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    className="gap-2 bg-white dark:bg-black"
-                                                >
-                                                    <XLogo className="h-4 w-4" />
-                                                    Show all {result.length} tweets
-                                                </Button>
-                                            </SheetTrigger>
-                                            <SheetContent side="right" className="w-[400px] sm:w-[600px] overflow-y-auto !p-0 !z-[70]">
-                                                <SheetHeader className='!mt-5 !font-sans'>
-                                                    <SheetTitle className='text-center'>All Tweets</SheetTitle>
-                                                </SheetHeader>
-                                                <FullTweetList />
-                                            </SheetContent>
-                                        </Sheet>
-                                    </div>
-
-                                    <div className="block sm:hidden">
-                                        <Drawer>
-                                            <DrawerTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    className="gap-2 bg-white dark:bg-black"
-                                                >
-                                                    <XLogo className="h-4 w-4" />
-                                                    Show all {result.length} tweets
-                                                </Button>
-                                            </DrawerTrigger>
-                                            <DrawerContent className="max-h-[85vh] font-sans">
-                                                <DrawerHeader>
-                                                    <DrawerTitle>All Tweets</DrawerTitle>
-                                                </DrawerHeader>
-                                                <div className="overflow-y-auto">
-                                                    <FullTweetList />
-                                                </div>
-                                            </DrawerContent>
-                                        </Drawer>
-                                    </div>
-                                </div>
-                            </div>
-                        </Card>
-                    );
-                }
 
                 if (toolInvocation.toolName === 'youtube_search') {
                     if (!result) {
@@ -2175,7 +1893,6 @@ const ToolInvocationListView = memo(
                         </Accordion>
                     );
                 }
-
                 if (toolInvocation.toolName === 'academic_search') {
                     if (!result) {
                         return <SearchLoadingState
@@ -2276,190 +1993,12 @@ const ToolInvocationListView = memo(
                         </Card>
                     );
                 }
-
-                if (toolInvocation.toolName === 'nearby_search') {
-                    if (!result) {
-                        return (
-                            <div className="flex items-center justify-between w-full">
-                                <div className="flex items-center gap-2">
-                                    <MapPin className="h-5 w-5 text-neutral-700 dark:text-neutral-300 animate-pulse" />
-                                    <span className="text-neutral-700 dark:text-neutral-300 text-lg">
-                                        Finding nearby {args.type}...
-                                    </span>
-                                </div>
-                                <motion.div className="flex space-x-1">
-                                    {[0, 1, 2].map((index) => (
-                                        <motion.div
-                                            key={index}
-                                            className="w-2 h-2 bg-neutral-400 dark:bg-neutral-600 rounded-full"
-                                            initial={{ opacity: 0.3 }}
-                                            animate={{ opacity: 1 }}
-                                            transition={{
-                                                repeat: Infinity,
-                                                duration: 0.8,
-                                                delay: index * 0.2,
-                                                repeatType: "reverse",
-                                            }}
-                                        />
-                                    ))}
-                                </motion.div>
-                            </div>
-                        );
-                    }
-
-                    console.log(result);
-
-                    return (
-                        <div className="my-4">
-                            <NearbySearchMapView
-                                center={result.center}
-                                places={result.results}
-                                type={args.type}
-                            />
-                        </div>
-                    );
-                }
-
-                if (toolInvocation.toolName === 'text_search') {
-                    if (!result) {
-                        return (
-                            <div className="flex items-center justify-between w-full">
-                                <div className='flex items-center gap-2'>
-                                    <MapPin className="h-5 w-5 text-neutral-700 dark:text-neutral-300 animate-pulse" />
-                                    <span className="text-neutral-700 dark:text-neutral-300 text-lg">Searching places...</span>
-                                </div>
-                                <motion.div className="flex space-x-1">
-                                    {[0, 1, 2].map((index) => (
-                                        <motion.div
-                                            key={index}
-                                            className="w-2 h-2 bg-neutral-400 dark:bg-neutral-600 rounded-full"
-                                            initial={{ opacity: 0.3 }}
-                                            animate={{ opacity: 1 }}
-                                            transition={{
-                                                repeat: Infinity,
-                                                duration: 0.8,
-                                                delay: index * 0.2,
-                                                repeatType: "reverse",
-                                            }}
-                                        />
-                                    ))}
-                                </motion.div>
-                            </div>
-                        );
-                    }
-
-                    const centerLocation = result.results[0]?.geometry?.location;
-                    return (
-                        <MapContainer
-                            title="Search Results"
-                            center={centerLocation}
-                            places={result.results.map((place: any) => ({
-                                name: place.name,
-                                location: place.geometry.location,
-                                vicinity: place.formatted_address
-                            }))}
-                        />
-                    );
-                }
-
-                if (toolInvocation.toolName === 'get_weather_data') {
-                    if (!result) {
-                        return (
-                            <div className="flex items-center justify-between w-full">
-                                <div className="flex items-center gap-2">
-                                    <Cloud className="h-5 w-5 text-neutral-700 dark:text-neutral-300 animate-pulse" />
-                                    <span className="text-neutral-700 dark:text-neutral-300 text-lg">Fetching weather data...</span>
-                                </div>
-                                <div className="flex space-x-1">
-                                    {[0, 1, 2].map((index) => (
-                                        <motion.div
-                                            key={index}
-                                            className="w-2 h-2 bg-neutral-400 dark:bg-neutral-600 rounded-full"
-                                            initial={{ opacity: 0.3 }}
-                                            animate={{ opacity: 1 }}
-                                            transition={{
-                                                repeat: Infinity,
-                                                duration: 0.8,
-                                                delay: index * 0.2,
-                                                repeatType: "reverse",
-                                            }}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        );
-                    }
-                    return <WeatherChart result={result} />;
-                }
-
-                if (toolInvocation.toolName === 'currency_converter') {
-                    return <CurrencyConverter toolInvocation={toolInvocation} result={result} />;
-                }
-
-                if (toolInvocation.toolName === 'stock_chart') {
-                    return (
-                        <div className="flex flex-col gap-3 w-full mt-4">
-                            <Badge
-                                variant="secondary"
-                                className={cn(
-                                    "w-fit flex items-center gap-3 px-4 py-2 rounded-full transition-colors duration-200",
-                                    !result
-                                        ? "bg-blue-50/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                                        : "bg-green-50/50 dark:bg-green-900/20 text-green-600 dark:text-green-400"
-                                )}>
-                                <TrendingUpIcon className="h-4 w-4" />
-                                <span className="font-medium">{args.title}</span>
-                                {!result ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Check className="h-4 w-4" />
-                                )}
-                            </Badge>
-
-                            {result?.chart && (
-                                <div className="w-full">
-                                    <InteractiveStockChart
-                                        title={args.title}
-                                        chart={{
-                                            ...result.chart,
-                                            x_scale: 'datetime'
-                                        }}
-                                        data={result.chart.elements}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    );
-                }
-
-                if (toolInvocation.toolName === "code_interpreter") {
-                    return (
-                        <div className="space-y-6">
-                            <CollapsibleSection
-                                code={args.code}
-                                output={result?.message}
-                                language="python"
-                                title={args.title}
-                                icon={args.icon || 'default'}
-                                status={result ? 'completed' : 'running'}
-                            />
-
-                            {result?.chart && (
-                                <div className="pt-1">
-                                    <InteractiveChart chart={result.chart} />
-                                </div>
-                            )}
-                        </div>
-                    );
-                }
-
                 if (toolInvocation.toolName === 'reason_search') {
                     const updates = message?.annotations?.filter((a: any) =>
                         a.type === 'research_update'
                     ).map((a: any) => a.data);
                     return <ReasonSearch updates={updates || []} />;
                 }
-
                 if (toolInvocation.toolName === 'web_search') {
                     return (
                         <div className="mt-4">
@@ -2473,7 +2012,6 @@ const ToolInvocationListView = memo(
                         </div>
                     );
                 }
-
                 if (toolInvocation.toolName === 'retrieve') {
                     if (!result) {
                         return (
@@ -2551,173 +2089,11 @@ const ToolInvocationListView = memo(
                         </div>
                     );
                 }
-                if (toolInvocation.toolName === 'text_translate') {
-                    return <TranslationTool toolInvocation={toolInvocation} result={result} />;
-                }
-
-                if (toolInvocation.toolName === 'track_flight') {
-                    if (!result) {
-                        return (
-                            <div className="flex items-center justify-between w-full">
-                                <div className="flex items-center gap-2">
-                                    <Plane className="h-5 w-5 text-neutral-700 dark:text-neutral-300 animate-pulse" />
-                                    <span className="text-neutral-700 dark:text-neutral-300 text-lg">Tracking flight...</span>
-                                </div>
-                                <div className="flex space-x-1">
-                                    {[0, 1, 2].map((index) => (
-                                        <motion.div
-                                            key={index}
-                                            className="w-2 h-2 bg-neutral-400 dark:bg-neutral-600 rounded-full"
-                                            initial={{ opacity: 0.3 }}
-                                            animate={{ opacity: 1 }}
-                                            transition={{
-                                                repeat: Infinity,
-                                                duration: 0.8,
-                                                delay: index * 0.2,
-                                                repeatType: "reverse",
-                                            }}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        );
-                    }
-
-                    if (result.error) {
-                        return (
-                            <div className="text-red-500 dark:text-red-400">
-                                Error tracking flight: {result.error}
-                            </div>
-                        );
-                    }
-
-                    return (
-                        <div className="my-4">
-                            <FlightTracker data={result} />
-                        </div>
-                    );
-                }
-
                 return null;
             },
             [message]
         );
 
-        const TranslationTool: React.FC<{ toolInvocation: ToolInvocation; result: any }> = ({ toolInvocation, result }) => {
-            const [isPlaying, setIsPlaying] = useState(false);
-            const [audioUrl, setAudioUrl] = useState<string | null>(null);
-            const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
-            const audioRef = useRef<HTMLAudioElement | null>(null);
-            const canvasRef = useRef<HTMLCanvasElement | null>(null);
-            const waveRef = useRef<Wave | null>(null);
-
-            useEffect(() => {
-                const _audioRef = audioRef.current
-                return () => {
-                    if (_audioRef) {
-                        _audioRef.pause();
-                        _audioRef.src = '';
-                    }
-                };
-            }, []);
-
-            useEffect(() => {
-                if (audioUrl && audioRef.current && canvasRef.current) {
-                    waveRef.current = new Wave(audioRef.current, canvasRef.current);
-                    waveRef.current.addAnimation(new waveRef.current.animations.Lines({
-                        lineColor: "rgb(203, 113, 93)",
-                        lineWidth: 2,
-                        mirroredY: true,
-                        count: 100,
-                    }));
-                }
-            }, [audioUrl]);
-
-            const handlePlayPause = async () => {
-                if (!audioUrl && !isGeneratingAudio) {
-                    setIsGeneratingAudio(true);
-                    try {
-                        const { audio } = await generateSpeech(result.translatedText, 'alloy');
-                        setAudioUrl(audio);
-                        setIsGeneratingAudio(false);
-                    } catch (error) {
-                        console.error("Error generating speech:", error);
-                        setIsGeneratingAudio(false);
-                    }
-                } else if (audioRef.current) {
-                    if (isPlaying) {
-                        audioRef.current.pause();
-                    } else {
-                        audioRef.current.play();
-                    }
-                    setIsPlaying(!isPlaying);
-                }
-            };
-
-            const handleReset = () => {
-                if (audioRef.current) {
-                    audioRef.current.pause();
-                    audioRef.current.currentTime = 0;
-                    setIsPlaying(false);
-                }
-            };
-
-            if (!result) {
-                return (
-                    <Card className="w-full my-4 bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700">
-                        <CardContent className="flex items-center justify-center h-24">
-                            <div className="animate-pulse flex items-center">
-                                <div className="h-4 w-4 bg-primary rounded-full mr-2"></div>
-                                <div className="h-4 w-32 bg-primary rounded"></div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                );
-            }
-
-            return (
-                <Card className="w-full my-4 shadow-none bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700">
-                    <CardContent className="p-6">
-                        <div className="space-y-4">
-                            <div className="w-full h-24 bg-neutral-100 dark:bg-neutral-700 rounded-lg overflow-hidden">
-                                <canvas ref={canvasRef} width="800" height="200" className="w-full h-full" />
-                            </div>
-                            <div className="flex text-left gap-3 items-center justify-center text-pretty">
-                                <div className="flex justify-center space-x-2">
-                                    <Button
-                                        onClick={handlePlayPause}
-                                        disabled={isGeneratingAudio}
-                                        variant="outline"
-                                        size="sm"
-                                        className="text-xs sm:text-sm w-24 bg-neutral-100 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200"
-                                    >
-                                        {isGeneratingAudio ? (
-                                            "Generating..."
-                                        ) : isPlaying ? (
-                                            <><Pause className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Pause</>
-                                        ) : (
-                                            <><Play className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Play</>
-                                        )}
-                                    </Button>
-                                </div>
-                                <div className='text-sm text-neutral-800 dark:text-neutral-200'>
-                                    The phrase <span className='font-semibold'>{toolInvocation.args.text}</span> translates from <span className='font-semibold'>{result.detectedLanguage}</span> to <span className='font-semibold'>{toolInvocation.args.to}</span> as <span className='font-semibold'>{result.translatedText}</span> in <span className='font-semibold'>{toolInvocation.args.to}</span>.
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                    {audioUrl && (
-                        <audio
-                            ref={audioRef}
-                            src={audioUrl}
-                            onPlay={() => setIsPlaying(true)}
-                            onPause={() => setIsPlaying(false)}
-                            onEnded={() => { setIsPlaying(false); handleReset(); }}
-                        />
-                    )}
-                </Card>
-            );
-        };
 
         return (
             <>

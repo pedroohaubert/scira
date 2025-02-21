@@ -6,6 +6,12 @@ import { SearchGroupId } from '@/lib/utils';
 import { xai } from '@ai-sdk/xai';
 import { generateObject } from 'ai';
 import { z } from 'zod';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+
+const openrouter = createOpenRouter({
+    apiKey: serverEnv.OPENROUTER_API_KEY,
+});
+
 
 export async function suggestQuestions(history: any[]) {
   'use server';
@@ -13,7 +19,7 @@ export async function suggestQuestions(history: any[]) {
   console.log(history);
 
   const { object } = await generateObject({
-    model: xai("grok-beta"),
+    model: openrouter('x-ai/grok-2-1212'),
     temperature: 0,
     maxTokens: 300,
     topP: 0.3,
@@ -38,51 +44,6 @@ Do not use pronouns like he, she, him, his, her, etc. in the questions as they b
   };
 }
 
-const ELEVENLABS_API_KEY = serverEnv.ELEVENLABS_API_KEY;
-
-export async function generateSpeech(text: string, voice: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer' = "alloy") {
-
-  const VOICE_ID = 'JBFqnCBsd6RMkjVDRZzb' // This is the ID for the "George" voice. Replace with your preferred voice ID.
-  const url = `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`
-  const method = 'POST'
-
-  if (!ELEVENLABS_API_KEY) {
-    throw new Error('ELEVENLABS_API_KEY is not defined');
-  }
-
-  const headers = {
-    Accept: 'audio/mpeg',
-    'xi-api-key': ELEVENLABS_API_KEY,
-    'Content-Type': 'application/json',
-  }
-
-  const data = {
-    text,
-    model_id: 'eleven_turbo_v2_5',
-    voice_settings: {
-      stability: 0.5,
-      similarity_boost: 0.5,
-    },
-  }
-
-  const body = JSON.stringify(data)
-
-  const input = {
-    method,
-    headers,
-    body,
-  }
-
-  const response = await fetch(url, input)
-
-  const arrayBuffer = await response.arrayBuffer();
-
-  const base64Audio = Buffer.from(arrayBuffer).toString('base64');
-
-  return {
-    audio: `data:audio/mp3;base64,${base64Audio}`,
-  };
-}
 
 export async function fetchMetadata(url: string) {
   try {
@@ -106,17 +67,14 @@ export async function fetchMetadata(url: string) {
 
 const groupTools = {
   web: [
-    'web_search', 'get_weather_data',
-    'retrieve',
-    'nearby_search', 'track_flight',
-    'movie_or_tv_search', 'trending_movies', 
-    'trending_tv',
+    'web_search',
+    'retrieve', 
     'reason_search'
   ] as const,
-  academic: ['academic_search', 'code_interpreter'] as const,
+  academic: ['academic_search'] as const,
   youtube: ['youtube_search'] as const,
-  x: ['x_search'] as const,
-  analysis: ['code_interpreter', 'stock_chart', 'currency_converter'] as const,
+  x: [] as const,
+  analysis: [] as const,
   fun: [] as const,
   extreme: ['reason_search'] as const,
 } as const;

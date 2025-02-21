@@ -2,6 +2,12 @@ import { xai } from '@ai-sdk/xai';
 import { generateObject } from 'ai';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { serverEnv } from '@/env/server';
+
+const openrouter = createOpenRouter({
+    apiKey: serverEnv.OPENROUTER_API_KEY,
+});
 
 export interface TrendingQuery {
     icon: string;
@@ -52,7 +58,7 @@ async function fetchGoogleTrends(): Promise<TrendingQuery[]> {
             const itemsWithCategoryAndIcon = await Promise.all(
                 items.map(async (item) => {
                     const { object } = await generateObject({
-                        model: xai("grok-beta"),
+                        model: openrouter('x-ai/grok-2-1212'),
                         prompt: `Give the category for the topic from the existing values only in lowercase only: ${item.replace(
                             /<\/?title>/g,
                             '',

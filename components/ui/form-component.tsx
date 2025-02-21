@@ -62,8 +62,8 @@ const models = [
     { value: "scira-default", label: "Grok 2.0", icon: XAIIcon, iconClass: "!text-neutral-300", description: "xAI's Grok 2.0 model", color: "glossyblack", vision: false, experimental: false, category: "Stable" },
     { value: "scira-grok-vision", label: "Grok 2.0 Vision", icon: XAIIcon, iconClass: "!text-neutral-300", description: "xAI's Grok 2.0 Vision model", color: "steel", vision: true, experimental: false, category: "Stable" },
     { value: "scira-sonnet", label: "Claude 3.5 Sonnet", icon: AnthropicIcon, iconClass: "!text-neutral-900 dark:!text-white", description: "Anthropic's G.O.A.T. model", color: "purple", vision: true, experimental: false, category: "Stable" },
-    { value: "scira-llama", label: "Llama 3.3 70B", icon: "/cerebras.png", iconClass: "!text-neutral-900 dark:!text-white", description: "Meta's Llama model by Cerebras", color: "offgray", vision: false, experimental: true, category: "Experimental" },
-    { value: "scira-r1", label: "DeepSeek R1 Distilled", icon: "/groq.svg", iconClass: "!text-neutral-900 dark:!text-white", description: "DeepSeek R1 model by Groq", color: "sapphire", vision: false, experimental: true, category: "Experimental" },
+    { value: "scira-llama", label: "Deepseek r1 distill 70B", icon: "/cerebras.png", iconClass: "!text-neutral-900 dark:!text-white", description: "Llama implementation of R1", color: "offgray", vision: false, experimental: true, category: "Experimental" },
+    { value: "scira-r1", label: "Openai o3-mini-high", icon: "/openai.png", iconClass: "!text-neutral-900 dark:!text-white", description: "Openai smartest reasoning model", color: "sapphire", vision: false, experimental: false, category: "Stable" },
 ];
 
 const getColorClasses = (color: string, isSelected: boolean = false) => {
